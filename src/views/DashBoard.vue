@@ -34,6 +34,7 @@ const monitorName = computed(() => {
   const qq = String(data.value.name ?? "");
   return data.value.monitor_name?.trim() || (/^[1-9]\d*$/.test(qq) ? qq : "—");
 });
+const currentLap = computed(() => Number(data.value.stage.match(/(\d+)周目$/)?.[1]) || null);
 
 const route = useRoute();
 const router = useRouter();
@@ -117,7 +118,7 @@ initEventSource();
           <el-main>
             <div class="boss-unit-toolbar"><span>血量单位</span><BattleUnitSelect /></div>
             <BossPanel
-              banner-color="yellow"
+              :is-current-lap="current_boss.lap === currentLap"
               :img-url="`https://redive.estertion.win/icon/unit/${current_boss.id}.webp`"
               :subscribe="current_boss.subscribe"
               :fighter="current_boss.fighter"

@@ -20,10 +20,7 @@ const props = defineProps({
   percentage: {
     type: Number,
   },
-  bannerColor: {
-    type: String,
-    default: "blue",
-  },
+  isCurrentLap: Boolean,
 });
 function boss_percentage(percentage: any): string {
   if (!percentage) {
@@ -67,7 +64,11 @@ const dynamic_tags = computed(() => [
           <div class="boss-detail">
             <div class="boss-heading">
               <span class="boss-name"><slot name="title"></slot></span>
-              <span class="stage-letter" :style="{ backgroundColor: 'blue' }">
+              <span
+                class="stage-letter"
+                :class="{ 'stage-letter--current': isCurrentLap }"
+                :title="isCurrentLap ? '公会当前周目' : undefined"
+              >
                 <slot name="banner"></slot>
               </span>
             </div>
@@ -155,8 +156,12 @@ const dynamic_tags = computed(() => [
     .stage-letter {
       padding: 0.25rem;
       border-radius: 0.375rem;
+      background-color: blue;
       color: #fff;
       font-size: 0.7rem;
+      &--current {
+        background-color: #c92b32;
+      }
     }
     .boss-avatar {
       display: flex;

@@ -787,7 +787,11 @@ onBeforeUnmount(() => {
                 <div class="monitor-facts">
                   <span>循环编号 {{ operations.monitor.loop_num }}</span
                   ><span>错误 {{ operations.monitor.error_count }} 次</span
-                  ><span class="monitor-account-fact">{{ !operations.monitor.running && monitorChoice?.current ? "上次监控" : "监控人" }}：{{ monitorLabel }}</span>
+                  ><span class="monitor-account-fact">
+                    {{ !operations.monitor.running && monitorChoice?.current ? "上次监控" : "监控人" }}：{{
+                      monitorChoice?.current ? monitorChoice.current.name || "未知昵称" : "暂无"
+                    }}
+                  </span>
                 </div>
                 <div class="panel-actions">
                   <el-button
@@ -1003,10 +1007,16 @@ onBeforeUnmount(() => {
                   :key="item.units.join('-')"
                 >
                   <div class="composition-characters">
-                    <span v-for="(character, index) in compositionCharacters(item)" :key="index">
-                      <img v-if="character.name" :src="get_unit_icon_api(character.unit_id)" alt="" loading="lazy" width="28" height="28" />
-                      {{ character.name || `角色 #${character.unit_id}` }}
-                    </span>
+                    <img
+                      v-for="(character, index) in compositionCharacters(item)"
+                      :key="index"
+                      :src="get_unit_icon_api(character.unit_id)"
+                      :alt="character.name || `角色 #${character.unit_id}`"
+                      :title="character.name || `角色 #${character.unit_id}`"
+                      loading="lazy"
+                      width="36"
+                      height="36"
+                    />
                   </div>
                   <strong>{{ item.uses }}次</strong
                   ><small>累计伤害 {{ formatNumber(item.damage) }}</small>
@@ -1515,12 +1525,7 @@ onBeforeUnmount(() => {
 .composition-characters {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 12px;
-  span {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
+  gap: 6px;
   img {
     border-radius: 4px;
   }
