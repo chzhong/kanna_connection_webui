@@ -10,9 +10,10 @@ const reportClock = new Intl.DateTimeFormat("zh-CN", {
 });
 const reportNumber = new Intl.NumberFormat("zh-CN");
 const battleDayOffset = 5 * 60 * 60;
-export const battleUnits = ["亿", "万", "m", "k", "基本"] as const;
+export const battleUnits = ["自适应", "亿", "万", "m", "k", "基本"] as const;
 export type BattleUnit = (typeof battleUnits)[number];
 const unitSteps = { 亿: 1_000_000, 万: 10_000, m: 1_000_000, k: 1_000 };
+const adaptiveThreshold = 10_000_000;
 
 export function formatReportTimestamp(timestamp: number) {
   const date = new Date(timestamp * 1000);
@@ -32,21 +33,33 @@ export function getBattleDay(timestamp: number) {
   return formatReportTimestamp(timestamp - battleDayOffset).date;
 }
 
-export function formatReportNumber(value: number, unit: BattleUnit = "基本") {
+function formatBattleNumber(value: number, unit: BattleUnit, smallValueLabel?: string) {
   if (!Number.isFinite(value)) return "—";
-  if (unit === "基本" || !Number.isSafeInteger(value)) return reportNumber.format(value);
+  const displayUnit = unit === "自适应"
+    ? (value > adaptiveThreshold ? "亿" : "基本")
+    : unit;
+  if (displayUnit === "基本" || !Number.isSafeInteger(value)) return reportNumber.format(value);
 
   // Battle values are integers. Compare the remainder exactly, including ties.
   const amount = BigInt(Math.abs(value));
-  const step = BigInt(unitSteps[unit]);
+  const step = BigInt(unitSteps[displayUnit]);
   let rounded = amount / step;
   const twiceRemainder = (amount % step) * 2n;
   if (twiceRemainder > step || (twiceRemainder === step && rounded % 2n !== 0n)) {
     rounded += 1n;
   }
   const sign = value < 0 && rounded !== 0n ? "-" : "";
-  if (unit === "亿") {
+  if (displayUnit === "亿") {
+    if (smallValueLabel && rounded === 0n && value >= 0) return smallValueLabel;
     return `${sign}${rounded / 100n}.${String(rounded % 100n).padStart(2, "0")} 亿`;
   }
-  return `${sign}${reportNumber.format(rounded)} ${unit}`;
+  return `${sign}${reportNumber.format(rounded)} ${displayUnit}`;
+}
+
+export function formatReportNumber(value: number, unit: BattleUnit = "基本") {
+  return formatBattleNumber(value, unit, "<50万");
+}
+
+export function formatBossHp(value: number, unit: BattleUnit) {
+  return formatBattleNumber(value, unit);
 }

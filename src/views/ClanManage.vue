@@ -64,6 +64,7 @@ const groupHasMore = ref(false);
 const groupPinnedId = ref(Number(route.query.group || 0));
 const contentLoading = ref(false);
 const actionLoading = ref("");
+const bossNoticeSaving = ref(false);
 const memberSearch = ref("");
 const management = ref<ClanManagementResponse | null>(null);
 const operations = ref<ClanOperationsResponse | null>(null);
@@ -75,6 +76,9 @@ let groupSearchTimer: number | null = null;
 let groupRequestId = 0;
 let contentRequestId = 0;
 const GROUP_PAGE_SIZE = 20;
+const bossNoticeNames = [
+  "手动", "需要通知时", "阶段切换", "D面新周目", "D面首领击杀", "新周目", "首领击杀",
+];
 
 const currentGroup = computed(
   () =>
@@ -371,6 +375,28 @@ async function stopMonitor() {
     handleError(error, "监控停止失败");
   } finally {
     actionLoading.value = "";
+  }
+}
+
+async function setBossNoticeLevel(level: number) {
+  const groupId = selectedGroupId.value;
+  if (!groupId || !operations.value?.can_operate || bossNoticeSaving.value) return;
+  bossNoticeSaving.value = true;
+  try {
+    const { data } = await axios.put<{ boss_notice_level: number; message: string }>(
+      get_group_monitor_api(groupId, "boss-notice"),
+      { level },
+      { withCredentials: true }
+    );
+    if (selectedGroupId.value === groupId && activeTab.value === "operations" && operations.value) {
+      operations.value.boss_notice_level = data.boss_notice_level;
+      await loadCurrentTab();
+    }
+    show_notice(data.message, "success");
+  } catch (error) {
+    handleError(error, "首领通报设置失败");
+  } finally {
+    bossNoticeSaving.value = false;
   }
 }
 
@@ -793,7 +819,23 @@ onBeforeUnmount(() => {
                     }}
                   </span>
                 </div>
-                <div class="panel-actions">
+                <div class="panel-actions monitor-actions">
+                  <label v-if="operations.boss_notice_level !== undefined" class="boss-notice-control">
+                    <span>首领通报</span>
+                    <el-select
+                      :model-value="operations.boss_notice_level"
+                      aria-label="首领通报"
+                      :disabled="!operations.can_operate || bossNoticeSaving"
+                      @change="setBossNoticeLevel"
+                    >
+                      <el-option
+                        v-for="(name, level) in bossNoticeNames"
+                        :key="level"
+                        :label="`${level}级 · ${name}`"
+                        :value="level"
+                      />
+                    </el-select>
+                  </label>
                   <el-button
                     v-if="!operations.monitor.running"
                     type="primary"
@@ -1401,7 +1443,7 @@ onBeforeUnmount(() => {
     font-size: 12px;
   }
 }
-.monitor-panel .el-select {
+.monitor-panel > .el-select {
   width: 100%;
 }
 .monitor-facts {
@@ -1418,6 +1460,28 @@ onBeforeUnmount(() => {
 }
 .panel-actions {
   justify-content: flex-end;
+}
+.monitor-actions {
+  gap: 12px;
+  > .el-button {
+    flex-shrink: 0;
+    margin-inline-start: auto;
+  }
+}
+.boss-notice-control {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  color: #697187;
+  font-size: 12px;
+  > span {
+    flex-shrink: 0;
+  }
+  .el-select {
+    width: 156px;
+    min-width: 0;
+  }
 }
 .quick-actions {
   display: grid;

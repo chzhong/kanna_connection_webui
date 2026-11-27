@@ -58,7 +58,7 @@ export function get_group_operations_api(groupId: string | number) {
 
 export function get_group_monitor_api(
   groupId: string | number,
-  action: "start" | "stop"
+  action: "start" | "stop" | "boss-notice"
 ) {
   return `${groups_api}/${groupId}/monitor/${action}`;
 }

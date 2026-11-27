@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatReportNumber, formatReportTimestamp, getBattleDay } from "./report-format";
+import { formatBossHp, formatReportNumber, formatReportTimestamp, getBattleDay } from "./report-format";
 
 const unix = (date: string) => Date.parse(date) / 1000;
 
@@ -29,7 +29,23 @@ describe("report formatting", () => {
     expect(formatReportNumber(400_500_000, "亿")).toBe("4.00 亿");
     expect(formatReportNumber(400_500_001, "亿")).toBe("4.01 亿");
     expect(formatReportNumber(401_500_000, "亿")).toBe("4.02 亿");
-    expect(formatReportNumber(1, "亿")).toBe("0.00 亿");
+  });
+
+  it("uses the base format through 10 million in adaptive mode", () => {
+    expect(formatReportNumber(500_000, "自适应")).toBe("500,000");
+    expect(formatReportNumber(10_000_000, "自适应")).toBe("10,000,000");
+    expect(formatReportNumber(10_000_001, "自适应")).toBe("0.10 亿");
+    expect(formatReportNumber(400_500_000, "自适应")).toBe("4.00 亿");
+    expect(formatBossHp(10_000_001, "自适应")).toBe("0.10 亿");
+    expect(formatBossHp(0, "自适应")).toBe("0");
+  });
+
+  it("displays small report values, but not boss HP, as <50万 in 亿 mode", () => {
+    for (const amount of [0, 1, 499_999, 500_000]) {
+      expect(formatReportNumber(amount, "亿")).toBe("<50万");
+    }
+    expect(formatReportNumber(500_001, "亿")).toBe("0.01 亿");
+    expect(formatBossHp(500_000, "亿")).toBe("0.00 亿");
   });
 
   it("rounds 万, m, and k to grouped integers, using the same tie rule", () => {

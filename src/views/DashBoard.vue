@@ -13,7 +13,7 @@ import type { DashboardInfo } from "@/globals/apimodels";
 import { show_notice } from "@/globals/until";
 import { get_dashboard_api, get_dashboard_renew_api } from "@/globals/api";
 import { battleNumberUnit } from "@/globals/battle-unit-preference";
-import { formatReportNumber } from "@/globals/report-format";
+import { formatBossHp, formatReportNumber } from "@/globals/report-format";
 
 var data = ref<DashboardInfo>({
   user_id: "1791800364",
@@ -135,9 +135,9 @@ initEventSource();
               <template #title> {{ current_boss.name }} </template>
               <template #subtitle v-if="current_boss.max_hp">
                 <span class="boss-hp-values" aria-label="当前血量 / 最大血量" :title="`${formatReportNumber(current_boss.current_hp)} / ${formatReportNumber(current_boss.max_hp)}`">
-                  <span class="boss-hp-current">{{ formatReportNumber(current_boss.current_hp, battleNumberUnit) }}</span>
+                  <span class="boss-hp-current">{{ formatBossHp(current_boss.current_hp, battleNumberUnit) }}</span>
                   <span class="boss-hp-divider">/</span>
-                  <span class="boss-hp-max">{{ formatReportNumber(current_boss.max_hp, battleNumberUnit) }}</span>
+                  <span class="boss-hp-max">{{ formatBossHp(current_boss.max_hp, battleNumberUnit) }}</span>
                 </span>
               </template>
               <template #subtitle v-else> 血量未知 </template>

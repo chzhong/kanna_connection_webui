@@ -326,6 +326,7 @@ export interface ClanOperationsResponse {
   role: string;
   role_level: number;
   can_operate: boolean;
+  boss_notice_level?: number;
   monitor: MonitorStateInfo;
   accounts: OperationAccountInfo[];
   kpis: KpiInfo[];

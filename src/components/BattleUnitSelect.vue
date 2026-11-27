@@ -11,6 +11,6 @@ import { battleUnits } from "@/globals/report-format";
 
 <style scoped>
 .battle-unit {
-  width: 72px;
+  width: 90px;
 }
 </style>
