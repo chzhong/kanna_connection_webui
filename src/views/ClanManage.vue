@@ -1405,15 +1405,16 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 .monitor-facts {
-  flex-wrap: wrap;
-  gap: 8px 16px;
+  justify-content: space-between;
+  gap: 8px;
   margin: 15px 0;
   color: #858da2;
   font-size: 12px;
 }
 .monitor-account-fact {
-  flex-basis: 100%;
+  min-width: 0;
   overflow-wrap: anywhere;
+  text-align: right;
 }
 .panel-actions {
   justify-content: flex-end;

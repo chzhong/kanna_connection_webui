@@ -9,6 +9,9 @@ src/assets/sprites/*.*
 !src/assets/sprites/.gitkeep
 public/icons
 .env
-components.d.ts
 %web%kanna_connection_webui/chat_history/history.sqlite
 .env.production
+
+# Vite-generated TypeScript declarations
+/auto-imports.d.ts
+/components.d.ts
