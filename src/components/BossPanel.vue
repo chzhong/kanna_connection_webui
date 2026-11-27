@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, watchEffect } from "vue";
+import { computed } from "vue";
 
 const props = defineProps({
   imgUrl: {
@@ -35,61 +35,57 @@ function boss_percentage(percentage: any): string {
   return percentage.toFixed(2) + "%";
 }
 
-const dynamic_tags = reactive([
+const dynamic_tags = computed(() => [
   {
     name: "挑战",
     type: "warning",
-    value: props.fighter,
+    value: props.fighter ?? 0,
   },
   {
     name: "预约",
     type: "primary",
-    value: props.subscribe,
+    value: props.subscribe ?? 0,
   },
   {
     name: "申请",
     type: "success",
-    value: props.apply,
+    value: props.apply ?? 0,
   },
   {
     name: "挂树",
     type: "danger",
-    value: props.tree,
+    value: props.tree ?? 0,
   },
-]);
-
-watchEffect(() => {
-  dynamic_tags[0].value = props.fighter;
-  dynamic_tags[1].value = props.subscribe;
-  dynamic_tags[2].value = props.tree;
-});
+] as const);
 </script>
 
 <template>
   <el-card class="boss-card">
     <div class="boss-info">
-      <div class="boss-detail">
-        <span class="boss-name">
-          <slot name="title"></slot>
-        </span>
-        <span class="stage-letter" :style="{ backgroundColor: 'blue' }">
-          <slot name="banner"></slot>
-        </span>
-        <div></div>
-        <div class="boss-notice" v-for="tag in dynamic_tags" :key="tag.type">
-          <el-badge :value="tag.value" class="badge-item" :type="tag.type">
-            <el-tag
-              :type="tag.type == 'primary' ? '' : tag.type"
-              size="small"
-              round
-              >{{ tag.name }}</el-tag
-            >
-          </el-badge>
-        </div>
-        <div>
-          <span class="boss-hp">
-            <slot name="subtitle"></slot>
-          </span>
+      <div class="boss-content">
+        <div class="boss-summary">
+          <div class="boss-detail">
+            <div class="boss-heading">
+              <span class="boss-name"><slot name="title"></slot></span>
+              <span class="stage-letter" :style="{ backgroundColor: 'blue' }">
+                <slot name="banner"></slot>
+              </span>
+            </div>
+            <div class="boss-notices">
+              <el-badge
+                v-for="tag in dynamic_tags"
+                :key="tag.type"
+                :value="tag.value || ''"
+                :hidden="tag.value === 0"
+                :type="tag.type"
+              >
+                <el-tag :type="tag.type === 'primary' ? '' : tag.type" size="small" round>
+                  {{ tag.name }}
+                </el-tag>
+              </el-badge>
+            </div>
+          </div>
+          <div class="boss-hp"><slot name="subtitle"></slot></div>
         </div>
         <el-progress
           :percentage="percentage"
@@ -111,41 +107,56 @@ watchEffect(() => {
 
 <style lang="scss" scoped>
 .boss-card {
-  height: 130px;
+  min-height: 130px;
   margin-bottom: 11px;
   .boss-info {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) clamp(56px, 18%, 100px);
+    align-items: center;
     gap: 1rem;
     margin: -8px;
+    .boss-summary,
+    .boss-heading,
+    .boss-notices {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    .boss-summary {
+      align-items: center;
+      gap: 10px 16px;
+    }
     .boss-detail {
-      padding-left: 1.5rem;
-      grid-column: span 2 / span 2;
-      .boss-notice {
-        margin-top: 0.5rem;
-        margin-bottom: 0.25rem;
-        display: inline-block;
-        .badge-item {
-          margin-right: 20px;
-        }
-      }
-      .boss-name {
-        font-size: 1.125rem;
-      }
-      .boss-hp {
-        font-size: 1rem;
-        font-weight: bold;
-      }
-      .boss-hp-percentage {
-        margin-top: 0.5rem;
-      }
-      .stage-letter {
-        margin: 0.6rem;
-        padding: 0.25rem;
-        border-radius: 0.375rem;
-        color: #fff;
-        font-size: 0.7rem;
-      }
+      flex: 0 1 208px;
+      min-width: 0;
+      text-align: left;
+    }
+    .boss-heading {
+      align-items: center;
+      gap: 4px 8px;
+    }
+    .boss-notices {
+      justify-content: flex-start;
+      gap: 8px 14px;
+      margin-top: 0.5rem;
+    }
+    .boss-name {
+      font-size: 1.125rem;
+    }
+    .boss-hp {
+      flex: 1 1 238px;
+      min-width: 0;
+      text-align: center;
+      font-size: 1rem;
+      font-weight: bold;
+    }
+    .boss-hp-percentage {
+      margin-top: 0.75rem;
+    }
+    .stage-letter {
+      padding: 0.25rem;
+      border-radius: 0.375rem;
+      color: #fff;
+      font-size: 0.7rem;
     }
     .boss-avatar {
       display: flex;
@@ -156,8 +167,8 @@ watchEffect(() => {
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         border-color: #fff;
         border-radius: 0.375rem;
-        width: 100px;
-        height: 100px;
+        width: 100%;
+        aspect-ratio: 1;
       }
     }
   }

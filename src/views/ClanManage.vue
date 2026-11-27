@@ -28,8 +28,17 @@ import {
   get_group_operations_api,
   get_group_sync_api,
   get_group_urge_api,
+  get_unit_icon_api,
   groups_api,
 } from "@/globals/api";
+import {
+  ACTIVE_MONITOR,
+  compositionCharacters,
+  monitorAccountKey,
+  monitorAccountLabel,
+  monitorSelection,
+  platformName,
+} from "@/globals/clan-display";
 import type {
   ClanAnalyticsResponse,
   ClanManagementResponse,
@@ -59,7 +68,7 @@ const memberSearch = ref("");
 const management = ref<ClanManagementResponse | null>(null);
 const operations = ref<ClanOperationsResponse | null>(null);
 const analytics = ref<ClanAnalyticsResponse | null>(null);
-const selectedAccount = ref("");
+const preferredMonitorByGroup = ref<Record<number, string>>({});
 const kpiForm = ref({ pcrid: "", bonus: 0 });
 let refreshTimer: number | null = null;
 let groupSearchTimer: number | null = null;
@@ -86,6 +95,21 @@ const filteredMembers = computed(() => {
 const maxTrendDamage = computed(() =>
   Math.max(...(analytics.value?.trends.map((item) => item.damage) || [1]), 1)
 );
+const monitorChoice = computed(() => operations.value && monitorSelection(
+  operations.value,
+  preferredMonitorByGroup.value[selectedGroupId.value ?? 0]
+));
+const monitorLabel = computed(() => monitorChoice.value?.current
+  ? monitorAccountLabel(monitorChoice.value.current)
+  : "暂无");
+const selectedAccount = computed({
+  get: () => monitorChoice.value?.key ?? "",
+  set: (key: string) => {
+    if (selectedGroupId.value && !operations.value?.monitor.running) {
+      preferredMonitorByGroup.value[selectedGroupId.value] = key;
+    }
+  },
+});
 
 function handleError(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
@@ -110,12 +134,6 @@ function formatTime(value: number) {
   return value
     ? new Date(value * 1000).toLocaleString("zh-CN", { hour12: false })
     : "暂无";
-}
-
-function platformName(platform: number | null) {
-  return platform === null
-    ? "未绑定"
-    : ["B服", "渠道服", "台服"][platform] || `服务器${platform}`;
 }
 
 function roleTag(role: string) {
@@ -233,9 +251,8 @@ async function loadCurrentTab() {
       ).data;
       if (requestId !== contentRequestId) return;
       operations.value = response;
-      if (!selectedAccount.value && response.accounts.length) {
-        const account = response.accounts[0];
-        selectedAccount.value = `${account.user_id}:${account.platform}`;
+      if (response.monitor.running) {
+        delete preferredMonitorByGroup.value[groupId];
       }
     } else if (activeTab.value === "analytics") {
       const response = (
@@ -305,10 +322,12 @@ async function setMemberRole(
 }
 
 async function startMonitor() {
-  if (!selectedGroupId.value || !selectedAccount.value) return;
-  const [accountUserId, platform] = selectedAccount.value
-    .split(":")
-    .map(Number);
+  const groupId = selectedGroupId.value;
+  if (!groupId || !operations.value?.can_operate || operations.value.monitor.running) return;
+  const account = operations.value.accounts.find(
+    (item) => monitorAccountKey(item) === selectedAccount.value
+  );
+  if (!account) return;
   try {
     await ElMessageBox.confirm(
       "启动出刀监控会登录所选PCR账号，并可能顶掉正在运行的游戏客户端。确认继续吗？",
@@ -317,8 +336,8 @@ async function startMonitor() {
     );
     actionLoading.value = "monitor";
     const response = await axios.post(
-      get_group_monitor_api(selectedGroupId.value, "start"),
-      { account_user_id: accountUserId, platform },
+      get_group_monitor_api(groupId, "start"),
+      { account_user_id: account.user_id, platform: account.platform },
       {
         withCredentials: true,
         headers: { "X-Game-Login-Confirmed": "yes" },
@@ -657,7 +676,7 @@ onBeforeUnmount(() => {
                     >QQ {{ member.user_id }} ·
                     {{ member.game_name || "未绑定PCR" }}</small
                   ><span
-                    >{{ platformName(member.platform)
+                    >{{ member.platform === null ? "未绑定" : platformName(member.platform)
                     }}<template v-if="member.viewer_id">
                       · {{ member.viewer_id }}</template
                     ></span
@@ -750,23 +769,25 @@ onBeforeUnmount(() => {
                 <el-select
                   v-model="selectedAccount"
                   placeholder="选择监控账号"
-                  :disabled="!operations.can_operate"
+                  :disabled="!operations.can_operate || operations.monitor.running"
                 >
                   <el-option
+                    v-if="operations.monitor.running && selectedAccount === ACTIVE_MONITOR"
+                    :label="monitorLabel"
+                    :value="ACTIVE_MONITOR"
+                  />
+                  <el-option
                     v-for="account in operations.accounts"
-                    :key="`${account.user_id}:${account.platform}`"
-                    :label="`${account.owner_name} · ${platformName(
-                      account.platform
-                    )} · ${account.viewer_id || '未知ID'}`"
-                    :value="`${account.user_id}:${account.platform}`"
+                    :key="monitorAccountKey(account)"
+                    :label="operations.monitor.running && account === monitorChoice?.matching
+                      ? monitorLabel : monitorAccountLabel(account)"
+                    :value="monitorAccountKey(account)"
                   />
                 </el-select>
                 <div class="monitor-facts">
                   <span>循环编号 {{ operations.monitor.loop_num }}</span
                   ><span>错误 {{ operations.monitor.error_count }} 次</span
-                  ><span
-                    >监控人 {{ operations.monitor.operator_id || "暂无" }}</span
-                  >
+                  ><span class="monitor-account-fact">{{ !operations.monitor.running && monitorChoice?.current ? "上次监控" : "监控人" }}：{{ monitorLabel }}</span>
                 </div>
                 <div class="panel-actions">
                   <el-button
@@ -981,10 +1002,13 @@ onBeforeUnmount(() => {
                   v-for="item in analytics.compositions"
                   :key="item.units.join('-')"
                 >
-                  <span>{{
-                    item.units.map((unit) => unit / 100).join(" · ")
-                  }}</span
-                  ><strong>{{ item.uses }}次</strong
+                  <div class="composition-characters">
+                    <span v-for="(character, index) in compositionCharacters(item)" :key="index">
+                      <img v-if="character.name" :src="get_unit_icon_api(character.unit_id)" alt="" loading="lazy" width="28" height="28" />
+                      {{ character.name || `角色 #${character.unit_id}` }}
+                    </span>
+                  </div>
+                  <strong>{{ item.uses }}次</strong
                   ><small>累计伤害 {{ formatNumber(item.damage) }}</small>
                 </div>
               </div>
@@ -1371,11 +1395,15 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 .monitor-facts {
-  justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 8px 16px;
   margin: 15px 0;
   color: #858da2;
   font-size: 12px;
+}
+.monitor-account-fact {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
 }
 .panel-actions {
   justify-content: flex-end;
@@ -1482,6 +1510,19 @@ onBeforeUnmount(() => {
     gap: 10px;
     padding: 10px;
     border-bottom: 1px solid #edf0f5;
+  }
+}
+.composition-characters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  img {
+    border-radius: 4px;
   }
 }
 .empty-workspace {
@@ -1617,6 +1658,12 @@ onBeforeUnmount(() => {
   }
   .quick-actions {
     grid-template-columns: 1fr;
+  }
+  .composition-list > div {
+    grid-template-columns: auto 1fr;
+    .composition-characters {
+      grid-column: 1 / -1;
+    }
   }
   .trend-list > div {
     grid-template-columns: 40px 1fr 70px;

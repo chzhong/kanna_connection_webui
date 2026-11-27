@@ -3,7 +3,8 @@ export interface DashboardInfo {
   clan_name: string;
   yesterday_dao: number;
   day_num: number;
-  name: string;
+  name: string | number;
+  monitor_name?: string;
   priority: number;
   clan_priority?: number;
   stage: string;
@@ -63,6 +64,7 @@ export interface SpecialNotice {
 export interface ReportInfo {
   user_id: string;
   priority: number;
+  can_correct_all?: boolean;
   all: UserGeneral[];
   detail: DaoDetial[];
   me: MeReport[];
@@ -306,6 +308,8 @@ export interface MonitorStateInfo {
   running: boolean;
   operator_id: number | null;
   operator_name: string;
+  platform?: number | null;
+  viewer_id?: number | null;
   loop_num: number;
   last_check: number;
   error_count: number;
@@ -350,8 +354,13 @@ export interface AnalyticsTrendInfo {
   dao: number;
   damage: number;
 }
+export interface AnalyticsCharacterInfo {
+  unit_id: number;
+  name: string;
+}
 export interface AnalyticsCompositionInfo {
   units: number[];
+  characters?: AnalyticsCharacterInfo[];
   uses: number;
   damage: number;
 }

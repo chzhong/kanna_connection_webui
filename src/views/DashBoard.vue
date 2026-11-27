@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from "vue";
+import { computed, ref, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axios, { AxiosError, type AxiosResponse } from "axios";
 import FootInfo from "@/components/FootInfo.vue";
 import SideMenu from "@/components/SideMenu.vue";
 import BossPanel from "@/components/BossPanel.vue";
+import BattleUnitSelect from "@/components/BattleUnitSelect.vue";
 import NoticeDialog from "@/components/NoticeDialog.vue";
 import DailyNotice from "@/components/DailyNotice.vue";
 import HeaderMenu from "@/components/HeaderMenu.vue";
 import type { DashboardInfo } from "@/globals/apimodels";
 import { show_notice } from "@/globals/until";
 import { get_dashboard_api, get_dashboard_renew_api } from "@/globals/api";
+import { battleNumberUnit } from "@/globals/battle-unit-preference";
+import { formatReportNumber } from "@/globals/report-format";
 
 var data = ref<DashboardInfo>({
   user_id: "1791800364",
@@ -25,6 +28,11 @@ var data = ref<DashboardInfo>({
   state: "关闭",
   boss: [],
   report: [],
+});
+
+const monitorName = computed(() => {
+  const qq = String(data.value.name ?? "");
+  return data.value.monitor_name?.trim() || (/^[1-9]\d*$/.test(qq) ? qq : "—");
 });
 
 const route = useRoute();
@@ -107,6 +115,7 @@ initEventSource();
       <el-scrollbar class="info-scrollbar">
         <el-container>
           <el-main>
+            <div class="boss-unit-toolbar"><span>血量单位</span><BattleUnitSelect /></div>
             <BossPanel
               banner-color="yellow"
               :img-url="`https://redive.estertion.win/icon/unit/${current_boss.id}.webp`"
@@ -124,9 +133,13 @@ initEventSource();
             >
               <template #title> {{ current_boss.name }} </template>
               <template #subtitle v-if="current_boss.max_hp">
-                HP: {{ current_boss.current_hp }} / {{ current_boss.max_hp }}
+                <span class="boss-hp-values" aria-label="当前血量 / 最大血量" :title="`${formatReportNumber(current_boss.current_hp)} / ${formatReportNumber(current_boss.max_hp)}`">
+                  <span class="boss-hp-current">{{ formatReportNumber(current_boss.current_hp, battleNumberUnit) }}</span>
+                  <span class="boss-hp-divider">/</span>
+                  <span class="boss-hp-max">{{ formatReportNumber(current_boss.max_hp, battleNumberUnit) }}</span>
+                </span>
               </template>
-              <template #subtitle v-else> 未知 </template>
+              <template #subtitle v-else> 血量未知 </template>
               <template #banner> {{ current_boss.lap }}周目 </template>
             </BossPanel>
           </el-main>
@@ -144,28 +157,12 @@ initEventSource();
                   <span class="percentage-value">{{ data.dao }} / 90</span>
                 </el-progress>
               </div>
-              <el-row>
-                <el-col :span="24">监控状态： {{ data.state }} </el-col>
-              </el-row>
-              <el-row>
-                <el-col :span="24"
-                  >监控人：
-                  <el-tag v-if="!isNaN(Number(data.name))">
-                    <el-avatar
-                      :src="`https://q1.qlogo.cn/g?b=qq&nk=${data.name}&s=140`"
-                      :size="20"
-                    ></el-avatar>
-                    {{ data.name }}
-                  </el-tag>
-                  <span v-else>关闭</span>
-                </el-col>
-              </el-row>
-              <el-row>
-                <el-col :span="24">当前排名： {{ data.rank }}</el-col>
-              </el-row>
-              <el-row>
-                <el-col :span="24">当前进度：{{ data.stage }}</el-col>
-              </el-row>
+              <dl class="monitor-status">
+                <dt>监控状态</dt><dd>{{ data.state }}</dd>
+                <dt>监控人</dt><dd>{{ monitorName }}</dd>
+                <dt>当前排名</dt><dd>{{ data.rank }}</dd>
+                <dt>当前进度</dt><dd>{{ data.stage }}</dd>
+              </dl>
               <el-divider />
               <div v-for="notice_data in notice_option" :key="notice_data.type">
                 <el-row>
@@ -211,7 +208,7 @@ initEventSource();
   .clanbattle-info {
     width: 300px;
     text-align: center;
-    height: 695px;
+    min-height: 695px;
     .card-header {
       background-image: url("../assets/img/banner.png");
       background-position: center;
@@ -232,6 +229,44 @@ initEventSource();
         font-size: 20px;
       }
     }
+  }
+}
+.boss-unit-toolbar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #56657c;
+  font-size: 13px;
+}
+.boss-hp-values {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 6px;
+  width: min(100%, 24rem);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.boss-hp-current { text-align: right; }
+.boss-hp-divider { color: #71829a; }
+.boss-hp-max { text-align: left; }
+.monitor-status {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 1.1rem;
+  width: min(100%, 210px);
+  margin: 12px auto 0;
+  font-size: 14px;
+  dt {
+    position: relative;
+    text-align: right;
+    &::after { position: absolute; left: 100%; content: "："; }
+  }
+  dd {
+    margin: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
   }
 }
 .info-scrollbar {
